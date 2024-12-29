@@ -1,0 +1,15 @@
+galaxy_info:
+  author: Olga Konstantinova
+  description: Spring_boot setup role
+  company: ITMO
+  license: BSD
+  min_ansible_version: 2.18
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 20.04
+  galaxy_tags:
+    - spring_boot
+  role_name: spring_boot
+  namespace: itmo
+dependencies: []

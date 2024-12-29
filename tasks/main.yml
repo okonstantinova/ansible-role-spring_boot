@@ -1,0 +1,62 @@
+---
+- name: Ensure required directories exist
+  file:
+    path: /usr/share/man/man1
+    state: directory
+    mode: '0755'
+
+- name: Install required packages
+  apt:
+    name:
+      - git
+      - openjdk-11-jdk-headless
+      - gradle
+    state: present
+    update_cache: yes
+
+- name: Check if Spring Boot demo directory exists
+  stat:
+    path: /opt/spring-boot-demo
+  register: spring_demo_check
+
+- name: Remove existing repository if it has local modifications
+  shell: rm -rf /opt/spring-boot-demo
+  when: spring_demo_check.stat.exists
+
+- name: Clone the Spring Boot demo repository
+  git:
+    repo: 'https://github.com/grafana/spring-boot-demo.git'
+    dest: /opt/spring-boot-demo
+    version: main
+  register: spring_repo
+  changed_when: "'before' in spring_repo and 'after' in spring_repo and spring_repo.before != spring_repo.after"
+
+- name: Run Gradle dependencies task to ensure dependencies are installed
+  shell: ./gradlew dependencies --no-daemon
+  args:
+    chdir: /opt/spring-boot-demo
+  when: spring_repo.changed
+
+- name: Build Spring Boot application using Gradle
+  shell: ./gradlew build --no-daemon
+  args:
+    chdir: /opt/spring-boot-demo
+  when: spring_repo.changed
+
+- name: Deploy Spring Boot service file
+  template:
+    src: spring_boot.service.j2
+    dest: /etc/systemd/system/spring_boot.service
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Reload systemd configuration
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Enable and start Spring Boot service
+  ansible.builtin.systemd:
+    name: spring_boot
+    state: started
+    enabled: yes
